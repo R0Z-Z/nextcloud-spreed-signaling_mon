@@ -10,6 +10,7 @@ What does it do:
 - Has an internal switch --extended for displaying additional browser and geolocation info.
 - You may fiddle with BACKLOG_LINES and LOOP_COUNTER variables for your convenience.
 - If your log file happens to be newly rotated, 8000 (my default) lines of BACKLOG might not exist, in this case, it will sall until 8000 lines reached. In this case, you may decrease the number.
+- Do not forget to change SYSTEMD_SERVICE variable according your own service filenames.
 
 PS: I am not a software guru, and I may not have time to revise code regularly. Well, anyway I hope this small script help someone out there or provoke better ideas.
 
