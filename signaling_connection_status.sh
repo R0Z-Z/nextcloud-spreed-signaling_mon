@@ -10,8 +10,8 @@ declare -A OS_BROWSER
 declare -A COUNTRY
 declare -A DATE_TIME
 declare -A LOST_PKTS_TIME
-BACKLOG_LINES=8000
-LOOP_COUNTER=100
+BACKLOG_LINES=1000
+LOOP_COUNTER=0
 
 while read line; do
 	eval $(echo "$line" | sed -nr "s/^([a-zA-Z]{3} [0-9]{1,2} [0-9]{2}:[0-9]{2}:[0-9]{2}) .*: Register.* ([a-z_]{3,14})@compat from ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}) in ([A-Z]{2}|unknown-country) (\(.*\)) (.*) \(private=.*\)$/unset 'DATE_TIME[\6]'; USER_IP+=([\6]=\2' '\3) DATE_TIME+=([\6]='\1') COUNTRY+=([\6]='\4') OS_BROWSER+=([\6]='\5')/p")
@@ -27,6 +27,17 @@ while read line; do
 #	echo "${COUNTRY[@]}"
 #	echo "$CLIENT_UNREGISTER"
 
+if [ "$LOOP_COUNTER" -lt "$BACKLOG_LINES" ];
+        then
+	printf "Processing $LOOP_COUNTER of last $BACKLOG_LINES log lines... Please Wait.\r" 
+#DEBUG	clear 
+#DEBUG	printf 'Processing last %b log lines...\nArray Sizes:\n | USER_IP    => %b\n | CLIENT_RTT => %b\n | LOST_PKTS  => %b\n | OS_BROWSER => %b\n | DATE_TIME  => %b\n | COUNTRY    => %b\n \r' $BACKLOG_LINES ${#USER_IP[*]} ${#CLIENT_RTT[*]} ${#LOST_PKTS[*]} ${#OS_BROWSER[*]} ${#DATE_TIME[*]} ${#COUNTRY[*]} 
+fi
+
+if [ "$LOOP_COUNTER" -eq "$BACKLOG_LINES" ];
+        then
+	clear
+fi
 
 if [ $CLIENT_UNREGISTER ]
 	then
@@ -40,13 +51,11 @@ if [ $CLIENT_UNREGISTER ]
 	unset 'DATE_TIME[$CLIENT_UNREGISTER]'	
 	unset 'LOST_PKTS_TIME[$CLIENT_UNREGISTER]'	
 	unset 'COUNTRY[$CLIENT_UNREGISTER]'	
-	clear 
-	printf 'Processing last %b log lines...\nArray Sizes:\n | USER_IP    => %b\n | CLIENT_RTT => %b\n | LOST_PKTS  => %b\n | OS_BROWSER => %b\n | DATE_TIME  => %b\n | COUNTRY    => %b\n \r' $BACKLOG_LINES ${#USER_IP[*]} ${#CLIENT_RTT[*]} ${#LOST_PKTS[*]} ${#OS_BROWSER[*]} ${#DATE_TIME[*]} ${#COUNTRY[*]} 
 fi 
-
+tput civis
 if [ "$LOOP_COUNTER" -gt "$BACKLOG_LINES" ];
 	then
-	clear
+	tput cup 0 0		
 	COLUMNS=$(tput cols)
 	PADDING=$(printf '%.1b' "#"{1..20})
 	eval "printf '%.1b' "-"{1..$COLUMNS}"; printf "\n"
@@ -58,7 +67,7 @@ if [ "$LOOP_COUNTER" -gt "$BACKLOG_LINES" ];
 		do
 		case $1 in
 		"")
-                printf '%-16b| \e[1;32m%-12b\e[0m%-15b %-42b%-40b\n'  "${DATE_TIME[$key]}" ${USER_IP[$key]} "| ${CLIENT_RTT[$key]:(-40)}" "|${LOST_PKTS_TIME[$key]} - ${LOST_PKTS[$key]:(-40)}"
+	        printf '%-16b| \e[1;32m%-12b\e[0m%-15b %-42b%-40b\n'  "${DATE_TIME[$key]}" ${USER_IP[$key]} "| ${CLIENT_RTT[$key]:(-40)}" "|${LOST_PKTS_TIME[$key]} - ${LOST_PKTS[$key]:(-40)}"
 		;;
 		"--extended")
 		printf '%-16b| \e[1;32m%-12b\e[0m%-15b %-42b%-40b\n' "${DATE_TIME[$key]}" ${USER_IP[$key]} "| ${CLIENT_RTT[$key]:(-40)}" "|${LOST_PKTS_TIME[$key]} - ${LOST_PKTS[$key]:(-40)}" 
@@ -67,11 +76,13 @@ if [ "$LOOP_COUNTER" -gt "$BACKLOG_LINES" ];
 		esac
 	done
 #	CLIENT_RTT[$key]=$(echo "${CLIENT_RTT[$key]}" | sed -r 's/\\e\[1;33m(.*)\\e\[0m/\1/')
+	printf '%-18b%-29b%-42b%b\n' "----------" "----------" "------" "--------------"
+	tput ed
 	sleep 0.2
 fi
 
 let LOOP_COUNTER++
-#echo -e "$LOOP_COUNTER\r"
+#DEBUG echo -e "$LOOP_COUNTER\r"
 
 done < <(journalctl -n $BACKLOG_LINES -f -u mkr-signaling.service)
 #done < <(journalctl -n $BACKLOG_LINES -f -u mkr-signaling.service | egrep -E '^.*Register user.*$|^.*Client .* has RTT of .*$|^.*Unregister.*|^.*Subscriber.* is reporting.*$')
